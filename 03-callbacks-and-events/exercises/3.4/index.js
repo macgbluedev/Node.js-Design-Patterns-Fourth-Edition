@@ -5,39 +5,39 @@
 //      get the timestamp and the remainder (%) operator to check whether the timestamp 
 //      is divisible by 5.
 
-// 3.3 A simple modification: Modify the function created in exercise 3.2 so that
-//  it emits a tick event immediately after the function is invoked.
-
+import { time } from "node:console";
 import { EventEmitter } from "node:events"
 
 const TICK_INTERVAL = 50
 
 function ticker(ms, cb) {
-  const emitter = new EventEmitter()
-  const start = Date.now()
+  const emitter = new EventEmitter();
+  const start = Date.now();
   let count = 0
 
   const tick = () => {
+    const now = Date.now();
+
+    if(now % 5 === 0)
+    {
+      const err = new Error("The timestamp is divisible by 5")
+      emitter.emit("error", err)
+      cb(err)
+      return true
+    }
+
     count++
     emitter.emit("tick")
+    return false
   }
 
   const scheduleTick = () => {
     setTimeout(() => {
-      tick()
-
-    const timestamp = Date.now() - start;
-
-    if(timestamp % 5)
-    {
-        throw new Error("The timestamp is divisible by 5");
-    }
-    else if (timestamp >= ms) {
-        return cb(count)
-    }
-
-    scheduleTick()
-}, TICK_INTERVAL)
+      if(tick()) return
+      const timestamp = Date.now();
+      if(timestamp - start >= ms) return cb(null, count)
+      scheduleTick
+    }, TICK_INTERVAL)
   }
 
   // emitting synchronously would fire before the caller can attach a
@@ -50,6 +50,9 @@ function ticker(ms, cb) {
   return emitter
 }
 
-ticker(400, (total) => console.log("Total ticks:", total)).on("tick", () =>
-  console.log("tick")
-)
+ticker(400, (err, total) => {
+    if(err) return console.error("Callback error:", err.message)
+    console.log("Total ticks:", total)
+})
+  .on("tick", () => console.log("tick"))
+  .on("error", (err) => console.log("Emitter error:", err));
